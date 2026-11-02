@@ -210,6 +210,11 @@ class HebrewDateFormatter {
     Parsha.ZACHOR: "Zachor",
     Parsha.PARA: "Parah",
     Parsha.HACHODESH: "Hachodesh",
+    Parsha.HAGADOL: "Hagadol",
+    Parsha.CHAZON: "Chazon",
+    Parsha.NACHAMU: "Nachamu",
+    Parsha.SHUVA: "Shuva",
+    Parsha.SHIRA: "Shira",
   };
 
   /// list of Hebrew parshiyos.
@@ -280,6 +285,11 @@ class HebrewDateFormatter {
     Parsha.ZACHOR: "זכור",
     Parsha.PARA: "פרה",
     Parsha.HACHODESH: "החדש",
+    Parsha.HAGADOL: "הגדול",
+    Parsha.CHAZON: "חזון",
+    Parsha.NACHAMU: "נחמו",
+    Parsha.SHUVA: "שובה",
+    Parsha.SHIRA: "שירה",
   };
 
   /// List of holidays transliterated into Latin chars. This is used by the
@@ -321,7 +331,8 @@ class HebrewDateFormatter {
     "Yom Ha'atzmaut",
     "Yom Yerushalayim",
     "Lag B'Omer",
-    "Shushan Purim Katan"
+    "Shushan Purim Katan",
+    "Isru Chag"
   ];
 
   /// Hebrew holiday list
@@ -352,7 +363,7 @@ class HebrewDateFormatter {
     'ט״ו בשבט',
     'תענית אסתר',
     'פורים',
-    'פורים שושן',
+    'שושן פורים',
     'פורים קטן',
     'ערב ראש חודש',
     'ראש חודש',
@@ -361,7 +372,8 @@ class HebrewDateFormatter {
     'יום העצמאות',
     'יום ירושלים',
     'ל״ג בעומר',
-    'פורים שושן קטן'
+    'שושן פורים קטן',
+    'אסרו חג'
   ];
 
   final List<String> _hebrewShortHolidays = [
@@ -391,7 +403,7 @@ class HebrewDateFormatter {
     'ט״ו בשבט',
     'תענית אסתר',
     'פורים',
-    'פורים שושן',
+    'שושן פורים',
     'פורים קטן',
     'ער״ח	',
     'ר״ח',
@@ -400,7 +412,8 @@ class HebrewDateFormatter {
     'יום העצמאות',
     'יום ירושלים',
     'ל״ג בעומר',
-    'פורים שושן קטן'
+    'שושן פורים קטן',
+    'אסרו חג'
   ];
 
   static final List<String> _longOmerDay = [
