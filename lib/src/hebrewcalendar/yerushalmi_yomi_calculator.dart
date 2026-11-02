@@ -18,6 +18,7 @@ import 'dart:core';
 
 import 'package:kosher_dart/src/hebrewcalendar/daf.dart';
 import 'package:kosher_dart/src/hebrewcalendar/jewish_calendar.dart';
+import 'package:kosher_dart/src/hebrewcalendar/jewish_date.dart';
 
 /// This class calculates the [Talmud Yerusalmi](https://en.wikipedia.org/wiki/Jerusalem_Talmud) [Daf Yomi]
 /// (https://en.wikipedia.org/wiki/Daf_Yomi) page ([Daf]) for the a given date.
@@ -90,9 +91,8 @@ class YerushalmiYomiCalculator {
   /// Throws [ArgumentError] 
   ///             if the date is prior to the September 11, 1923 start date of the first Daf Yomi cycle
   static Daf getDafYomiYerushalmi(JewishCalendar calendar) {
-    DateTime nextCycle = DateTime.now();
-    DateTime prevCycle = DateTime.now();
-    DateTime requested = calendar.getGregorianCalendar();
+    // All the date arithmetic is done on UTC calendar dates, so that daylight saving time can't shift a day.
+    final DateTime requested = _toUtcDate(calendar.getGregorianCalendar());
     int masechta = 0;
     Daf dafYomi = Daf(0, 0);
 
@@ -102,35 +102,28 @@ class YerushalmiYomiCalculator {
       return Daf(39, 0);
     }
 
-    if (requested.isBefore(dafYomiStartDay)) {
+    final DateTime startDay = _toUtcDate(dafYomiStartDay);
+    if (requested.isBefore(startDay)) {
       // TODO: should we return a null or throw an IllegalArgumentException?
       throw ArgumentError(
           "$requested is prior to organized Daf Yomi Yerushlmi cycles that started on $dafYomiStartDay");
     }
 
-    // Start to calculate current cycle. init the start day
-    nextCycle = DateTime.parse(dafYomiStartDay.toIso8601String());
-
-    // Go cycle by cycle, until we get the next cycle
-    while (requested.isAfter(nextCycle)) {
-      prevCycle = DateTime.parse(nextCycle.toIso8601String());
-
-      // Adds the number of whole shas dafs. and the number of days that not have daf.
-      nextCycle = nextCycle.add(const Duration(days: WHOLE_SHAS_DAFS));
-      nextCycle = nextCycle
-          .add(Duration(days: _getNumOfSpecialDays(prevCycle, nextCycle)));
+    // Go cycle by cycle, until we reach the cycle that includes the requested date
+    DateTime prevCycle = startDay;
+    DateTime nextCycle = _getNextCycleStart(prevCycle);
+    while (!requested.isBefore(nextCycle)) {
+      prevCycle = nextCycle;
+      nextCycle = _getNextCycleStart(prevCycle);
     }
 
-    // Get the number of days from cycle start until request.
-    int dafNo = (_getDiffBetweenDays(prevCycle, requested)).toInt();
-
-    // Get the number of special day to subtract
-    int specialDays = _getNumOfSpecialDays(prevCycle, requested);
-    int total = dafNo - specialDays;
+    // Get the number of days from cycle start until request, less the days without a daf.
+    int total = _getDiffBetweenDays(prevCycle, requested) -
+        _getNumOfSpecialDays(prevCycle, requested);
 
     // Finally find the daf.
     for (int j = 0; j < BLATT_PER_MASSECTA.length; j++) {
-      if (total <= BLATT_PER_MASSECTA[j]) {
+      if (total < BLATT_PER_MASSECTA[j]) {
         dafYomi = Daf(masechta, total + 1);
         break;
       }
@@ -141,55 +134,65 @@ class YerushalmiYomiCalculator {
     return dafYomi;
   }
 
-  /// Return the number of special days (Yom Kippur and Tisha Beav) That there is no Daf in this days.
-  /// From the last given number of days until given date
-  ///
-  /// - [start]: start date to calculate
-  /// - [end]: end date to calculate
-  /// Returns the number of special days
+  static DateTime _toUtcDate(DateTime date) {
+    return DateTime.utc(date.year, date.month, date.day);
+  }
+
+  static DateTime _addDays(DateTime date, int days) {
+    return DateTime.utc(date.year, date.month, date.day + days);
+  }
+
+  /// The day after the last day of the cycle that starts on [cycleStart]. A cycle is a whole _Shas_ of
+  /// [WHOLE_SHAS_DAFS] days, extended by the _Yom Kippur_ and _Tisha Beav_ days that have no daf.
+  static DateTime _getNextCycleStart(DateTime cycleStart) {
+    DateTime endDate = _addDays(cycleStart, WHOLE_SHAS_DAFS - 1);
+    int specialDays = _getNumOfSpecialDays(cycleStart, endDate);
+    while (specialDays > 0) {
+      final DateTime newStart = _addDays(endDate, 1);
+      endDate = _addDays(endDate, specialDays);
+      specialDays = _getNumOfSpecialDays(newStart, endDate);
+    }
+    return _addDays(endDate, 1);
+  }
+
   static int _getNumOfSpecialDays(DateTime start, DateTime end) {
     // Find the start and end Jewish years
-    int startYear = JewishCalendar.fromDateTime(start).getJewishYear();
-    int endYear = JewishCalendar.fromDateTime(end).getJewishYear();
+    int startYear = _jewishYearOf(start);
+    int endYear = _jewishYearOf(end);
 
-    // Value to return
     int specialDays = 0;
-
-    //Instant of special Dates
-    JewishCalendar yomKippur = JewishCalendar.initDate(5770, 7, 10);
-    JewishCalendar tishaBeav = JewishCalendar.initDate(5770, 5, 9);
-
-    // Go over the years and find special dates
-    for (int i = startYear; i <= endYear; i++) {
-      yomKippur.setJewishYear(i);
-      tishaBeav.setJewishYear(i);
-
-      if (_isBetween(start, yomKippur.getGregorianCalendar(), end)) {
+    for (int year = startYear; year <= endYear; year++) {
+      final DateTime yomKippur = _toUtcDate(
+          JewishCalendar.initDate(year, JewishDate.TISHREI, 10)
+              .getGregorianCalendar());
+      final JewishCalendar tishaBeavCalendar =
+          JewishCalendar.initDate(year, JewishDate.AV, 9);
+      DateTime tishaBeav = _toUtcDate(tishaBeavCalendar.getGregorianCalendar());
+      // Tisha Beav is pushed off to Sunday when it is on Shabbos
+      if (tishaBeavCalendar.getDayOfWeek() == JewishDate.saturday) {
+        tishaBeav = _addDays(tishaBeav, 1);
+      }
+      if (_isBetween(start, yomKippur, end)) {
         specialDays++;
       }
-      if (_isBetween(start, tishaBeav.getGregorianCalendar(), end)) {
+      if (_isBetween(start, tishaBeav, end)) {
         specialDays++;
       }
     }
-
     return specialDays;
   }
 
-  /// Return if the date is between two dates
-  ///
-  /// - [start]: the start date
-  /// - [date]: the date being compared
-  /// - [end]: the end date
-  /// Returns if the date is between the start and end dates
-  static bool _isBetween(DateTime start, DateTime date, DateTime end) {
-    return start.isBefore(date) && end.isAfter(date);
+  static int _jewishYearOf(DateTime utcDate) {
+    return JewishCalendar.fromDateTime(
+            DateTime(utcDate.year, utcDate.month, utcDate.day))
+        .getJewishYear();
   }
 
-  /// Return the number of days between the dates passed in
-  /// - [start]: the start date
-  /// - [end]: the end date
-  /// Returns the number of days between the start and end dates
-  static double _getDiffBetweenDays(DateTime start, DateTime end) {
-    return end.difference(start).inMilliseconds / DAY_MILIS;
+  static bool _isBetween(DateTime start, DateTime date, DateTime end) {
+    return !date.isBefore(start) && !end.isBefore(date);
+  }
+
+  static int _getDiffBetweenDays(DateTime start, DateTime end) {
+    return end.difference(start).inDays;
   }
 }
