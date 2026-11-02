@@ -162,13 +162,13 @@ class JewishDate implements Comparable<JewishDate> {
   late int _jewishYear;
 
   /// the internal count of _molad_ hours.
-  late int _moladHours;
+  int _moladHours = 0;
 
   /// the internal count of _molad_ minutes.
-  late int _moladMinutes;
+  int _moladMinutes = 0;
 
   /// the internal count of _molad_ _chalakim_.
-  late int _moladChalakim;
+  int _moladChalakim = 0;
 
   int? _hour;
   int? _minute;

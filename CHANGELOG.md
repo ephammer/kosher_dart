@@ -1,3 +1,30 @@
+## Unreleased (fork)
+Aligned with KosherJava 3.1.0. `tool/kosherjava/run.sh` compares the two libraries and
+`tool/kosherjava/EXPECTED_DIFFERENCES.md` lists what still differs on purpose.
+
+Calendar
+- `isYomTov()` is no longer true on erev Pesach, Shavuos, Rosh Hashana, Yom Kippur and Succos (operator precedence); `TefilaRules.isTachanunRecitedShacharis` checks `isErevYomTov()` itself and gives the same answers
+- `getYomTovIndex()` returns `ISRU_CHAG` on Isru Chag (day after Pesach, Shavuos and Succos, in and out of Israel) instead of -1; `isIsruChag()` is true only then, `isYomTov()` is false, `formatYomTov` names it (`Isru Chag`, `אסרו חג`). `ISRU_CHAG` is now 36, it used to be 35 like `SHUSHAN_PURIM_KATAN`
+- `isTaanisBechoros()` on Thursday 12 Nissan (was Tuesday); 17 Tammuz on Shabbos is no fast (was Friday)
+- `isCholHamoedSuccos()` and `isCholHamoed()` include Hoshana Rabba
+- `getSpecialShabbos()` also returns the new `Parsha` values `HAGADOL`, `CHAZON`, `NACHAMU`, `SHUVA` and `SHIRA`, with Hebrew and English names in `HebrewDateFormatter`. The values are added at the end of the enum
+- `JewishCalendar.clone()` keeps `useModernHolidays` (tachanun before Yom Haatzmaut and Yom Yerushalayim was wrong) and the new `isMukafChoma`; added `isPurim()`
+- `TefilaRules.isVeseinTalUmatarStartDate` and `isVeseinTalUmatarStartingTonight` match KosherJava in and out of Israel
+- `getDafYomiYerushalmi` moves to the next masechta on its first daf (was the last daf plus one) and counts a Tisha B'Av that is pushed to Sunday; the date arithmetic no longer depends on the time zone
+- Hebrew `formatYomTov` writes `שושן פורים` and `שושן פורים קטן`
+- The molad fields of `JewishDate` start at 0 instead of throwing before `getMolad()`
+
+Zmanim
+- `getMoladAsDateTime()` returns the instant of the molad on any machine (it was hours off, and depended on the time zone of the machine); `getZmanMolad`, `getTchilasZmanKidushLevana3Days/7Days` and `getSofZmanKidushLevana*` build on it
+- Kiddush levana zmanim in `ComplexZmanimCalendar` and `ZmanimCalendar.isAssurBemlacha` passed a 1-based month to `setGregorianDate` (0-based): wrong day, and an `ArgumentError` for `isAssurBemlacha` in December
+- `getSolarMidnight()` steps to the next calendar date; on the day daylight saving time ends it returned solar noon. `getMidnightTonight()` was the same as `getMidnightLastNight()`
+- The NOAA calculator no longer clamps the hour angle: a degree based alos (or any zman) the sun never reaches is `null` instead of solar midnight, and a zenith the sun only just reaches is found
+- `getSofZmanShma`, `getSofZmanTfila`, `getMinchaGedola`, `getMinchaKetana`, `getPlagHamincha` and the zmanim built on them return `null` where a boundary of the day does not exist, instead of the GRA time or an endless recursion; `getTemporalHour` and `getShaahZmanis*` return `double.nan` instead of throwing. New `getTemporalHourBetween`
+- Short polar days: `getMinchaGedola30Minutes`, `getMinchaGedolaGRAFixedLocalChatzos30Minutes`, `getSofZmanShma3HoursBeforeChatzos`, `getSofZmanTfila2HoursBeforeChatzos`, `getBainHasmashosYereim*Minutes`, `getMinchaKetanaAteretTorah`, `getPlagHaminchaAteretTorah` and `getFixedLocalChatzos` return `null` outside the day; `getMinchaGedolaGreaterThan30` falls back to `getMinchaGedola`
+- Added `getChatzosHalayla`, `getMisheyakir12Point85Degrees`, `getTzaisGeonim4Point42Degrees`, `getTzaisGeonim4Point66Degrees` and `getSofZmanTfilaAteretTorah`
+- `getChatzos` stays the middle of the day, not the sun's transit
+- `GeoLocation` documents that its time zone comes from the `DateTime` it is given; pass a time zone aware `DateTime` for a place in another zone than the machine
+
 ## 2.0.20
 - Improve runtime performance across core calculation functions
 - Updated package description to be cleaner and more accurate

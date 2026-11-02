@@ -251,7 +251,7 @@ class AstronomicalCalendar {
   ///   the offset in milliseconds to add to the time.
   /// Returns the [DateTime] with the offset in milliseconds added to it
   static DateTime? getTimeOffset(DateTime? time, double offset) {
-    if (time == null || offset == double.minPositive) {
+    if (time == null || offset.isNaN || offset == double.minPositive) {
       return null;
     }
     return time.add(Duration(milliseconds: offset.toInt()));
@@ -389,14 +389,28 @@ class AstronomicalCalendar {
   /// Returns the `long` millisecond length of the temporal hour. If the calculation can't be computed a
   /// double.nan will be returned. See detailed explanation on top of the page.
   ///
-  /// See also [getTemporalHour].
+  /// When both [startOfDay] and [endOfDay] are omitted (or null), the day from [getSeaLevelSunrise] to
+  /// [getSeaLevelSunset] is used. When only one of them is null, double.nan is returned, which is what a
+  /// dawn or dusk that doesn't exist (for example [getAlos18Degrees] in the summer in the north) results in.
+  ///
+  /// See also [getTemporalHourBetween].
   double getTemporalHour([DateTime? startOfDay, DateTime? endOfDay]) {
-    if (startOfDay == null || endOfDay == null) {
+    if (startOfDay == null && endOfDay == null) {
       startOfDay = getSeaLevelSunrise();
       endOfDay = getSeaLevelSunset();
     }
-    return (endOfDay!.millisecondsSinceEpoch -
-            startOfDay!.millisecondsSinceEpoch) /
+    return getTemporalHourBetween(startOfDay, endOfDay);
+  }
+
+  /// The temporal hour between a [startOfDay] and [endOfDay] that are both required. Unlike [getTemporalHour] a
+  /// null start or end never falls back to sea level sunrise and sunset, so a day boundary that doesn't exist
+  /// results in double.nan instead of the length of the GRA hour.
+  double getTemporalHourBetween(DateTime? startOfDay, DateTime? endOfDay) {
+    if (startOfDay == null || endOfDay == null) {
+      return double.nan;
+    }
+    return (endOfDay.millisecondsSinceEpoch -
+            startOfDay.millisecondsSinceEpoch) /
         12;
   }
 
@@ -415,11 +429,11 @@ class AstronomicalCalendar {
   /// Arctic Circle where there is at least one day a year where the sun does not rise, and one where it does
   /// not set, null will be returned. See detailed explanation on top of the page.
   DateTime? getSunTransit([DateTime? startOfDay, DateTime? endOfDay]) {
-    if (startOfDay == null || endOfDay == null) {
+    if (startOfDay == null && endOfDay == null) {
       startOfDay = getSeaLevelSunrise();
       endOfDay = getSeaLevelSunset();
     }
-    double temporalHour = getTemporalHour(startOfDay, endOfDay);
+    double temporalHour = getTemporalHourBetween(startOfDay, endOfDay);
     return getTimeOffset(startOfDay, temporalHour * 6);
   }
 

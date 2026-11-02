@@ -80,8 +80,13 @@ class GeoLocation {
   /// - [elevation]: 
   ///   the elevation above sea level in Meters. Elevation is not used in most algorithms used for calculating
   ///   sunrise and set.
-  /// - [timeZone]: 
-  ///   the `TimeZone` for the location.
+  /// - [dateTime]: 
+  ///   a date and time that carries the time zone of the location. Dart's `DateTime` is only ever UTC or the time
+  ///   zone of the machine, so unless a time zone aware subclass (such as the `TZDateTime` of the `timezone`
+  ///   package, which implements `DateTime`) is passed, the location is assumed to be in the time zone of the
+  ///   machine. Its `timeZoneOffset` is used for the local mean time offset and the antimeridian adjustment, so
+  ///   a location in another zone than the machine's, in particular near the international date line (Samoa,
+  ///   Kiribati, Fiji, Auckland), gets the wrong offset from a plain `DateTime`. Pass the time of the location.
   GeoLocation.setLocation(
       String locationName, double latitude, double longitude, DateTime dateTime,
       [double elevation = 0]) {
@@ -250,6 +255,9 @@ class GeoLocation {
   ///
   /// Returns the offset in milliseconds not accounting for Daylight saving time. A positive value will be returned
   /// East of the 15° timezone line, and a negative value West of it.
+  ///
+  /// The time zone offset comes from the `timeZoneOffset` of [getDateTime], so it is the offset of the machine
+  /// unless the `DateTime` that was set is time zone aware. See [GeoLocation.setLocation].
   double getLocalMeanTimeOffset() {
     return (getLongitude() * 4 * _MINUTE_MILLIS -
             getDateTime().timeZoneOffset.inMilliseconds)
@@ -271,6 +279,10 @@ class GeoLocation {
   /// to bring the date back to 2018-02-03.
   ///
   /// Returns the number of days to adjust the date This will typically be 0 unless the date crosses the antimeridian
+  ///
+  /// This depends on [getLocalMeanTimeOffset], and so on the time zone of the `DateTime` set in this location. A
+  /// plain `DateTime` has the zone of the machine, which is only right for locations in the same zone as the
+  /// machine.
   int getAntimeridianAdjustment() {
     double localHoursOffset = getLocalMeanTimeOffset() / _HOUR_MILLIS;
 
