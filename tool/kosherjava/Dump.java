@@ -7,7 +7,8 @@ public class Dump{
  static List<Method> ms(Class<?> c,int n){List<Method> l=new ArrayList<>();for(Method m:c.getMethods()){String s=m.getName();
   if(Modifier.isStatic(m.getModifiers())||m.getParameterCount()!=n||!(s.startsWith("get")||s.startsWith("is")))continue;
   if(m.getDeclaringClass()==Object.class)continue;l.add(m);}l.sort(Comparator.comparing(Method::getName));return l;}
- static void dump(PrintWriter w,String k,Object o,List<Method> l,Object...a){for(Method m:l){String r;try{r=norm(m.invoke(o,a));if(r==null)continue;}catch(Exception e){r="ERR";}w.println(k+"|"+m.getName()+"|"+r);}}
+ static String holiday(String r){try{int v=Integer.parseInt(r);for(Field f:JewishCalendar.class.getFields())if(Modifier.isStatic(f.getModifiers())&&f.getType()==int.class&&f.getInt(null)==v&&f.getName().matches("[A-Z_]+")&&!f.getName().matches("(NISSAN|IYAR|SIVAN|TAMMUZ|AV|ELUL|TISHREI|CHESHVAN|KISLEV|TEVES|SHEVAT|ADAR|ADAR_II)"))return f.getName().replace("_","");}catch(Exception e){}return r;}
+ static void dump(PrintWriter w,String k,Object o,List<Method> l,Object...a){for(Method m:l){String r;try{r=norm(m.invoke(o,a));if(r==null)continue;if(m.getName().equals("getYomTovIndex"))r=holiday(r);}catch(Exception e){r="ERR";}w.println(k+"|"+m.getName()+"|"+r);}}
  public static void main(String[] x)throws Exception{PrintWriter w=new PrintWriter(new BufferedWriter(new FileWriter(x[1])));
   if(x[0].equals("zman")){List<Method> l=ms(ComprehensiveZmanimCalendar.class,0);
    String n=x[2];GeoLocation g=new GeoLocation(n,Double.parseDouble(x[3]),Double.parseDouble(x[4]),Double.parseDouble(x[5]),ZoneId.of(x[6]));
