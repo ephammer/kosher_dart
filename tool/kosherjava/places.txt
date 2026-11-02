@@ -1,0 +1,11 @@
+Jerusalem 31.778 35.235 0 Asia/Jerusalem
+JerusalemElev 31.778 35.235 800 Asia/Jerusalem
+Paris 48.8566 2.3522 0 Europe/Paris
+NewYork 40.7128 -74.006 0 America/New_York
+LosAngeles 34.0522 -118.2437 0 America/Los_Angeles
+London 51.5074 -0.1278 0 Europe/London
+Melbourne -37.8136 144.9631 0 Australia/Melbourne
+Auckland -36.8485 174.7633 0 Pacific/Auckland
+Honolulu 21.3069 -157.8583 0 Pacific/Honolulu
+BuenosAires -34.6037 -58.3816 0 America/Argentina/Buenos_Aires
+Tromso 69.6492 18.9553 0 Europe/Oslo
