@@ -32,6 +32,24 @@ void main() {
     });
   });
 
+  group('molad fields', () {
+    test('are 0 until the molad is calculated, like KosherJava', () {
+      final JewishCalendar jc =
+          JewishCalendar.fromDateTime(DateTime(2026, 11, 2));
+      expect(jc.getMoladHours(), 0);
+      expect(jc.getMoladMinutes(), 0);
+      expect(jc.getMoladChalakim(), 0);
+    });
+
+    test('hold the molad of the month of the molad date', () {
+      final JewishDate molad =
+          JewishCalendar.fromDateTime(DateTime(2026, 11, 2)).getMolad();
+      expect(molad.getMoladHours(), 9);
+      expect(molad.getMoladMinutes(), 43);
+      expect(molad.getMoladChalakim(), 2);
+    });
+  });
+
   group('kiddush levana zmanim', () {
     test('on the day of the zman', () {
       expect(millis(jerusalem(DateTime(2026, 1, 18)).getZmanMolad()),
