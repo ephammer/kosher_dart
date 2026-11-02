@@ -90,7 +90,12 @@ enum Parsha {
   SHKALIM,
   ZACHOR,
   PARA,
-  HACHODESH
+  HACHODESH,
+  HAGADOL,
+  CHAZON,
+  NACHAMU,
+  SHUVA,
+  SHIRA
 }
 
 enum DayOfWeek {
@@ -235,11 +240,16 @@ class JewishCalendar extends JewishDate {
   /// The holiday of Purim Katan on the 15th day of Adar I on a leap year when Purim is on Adar II, a minor holiday.
   static const int SHUSHAN_PURIM_KATAN = 35;
 
-  /// The day following the last day of Pesach, Shavuos and Sukkos.
-  static const int ISRU_CHAG = 35;
+  /// The day following the last day of Pesach, Shavuos and Sukkos. KosherJava uses 35 for this, which in this library
+  /// is already taken by [SHUSHAN_PURIM_KATAN], so the value here is 36.
+  static const int ISRU_CHAG = 36;
 
   /// Is the calendar set to Israel, where some holidays have different rules.
   bool inIsrael = false;
+
+  /// Is the city surrounded by a wall from the time of Yehoshua, so that Purim is observed on Shushan Purim.
+  /// This affects [isPurim].
+  bool isMukafChoma = false;
 
   ///Is the calendar set to use modern Israeli holidays such as Yom Haatzmaut.
   ///See also [isUseModernHolidays].
@@ -1460,8 +1470,29 @@ class JewishCalendar extends JewishDate {
           return Parsha.HACHODESH;
         }
       }
-      if (getJewishMonth() == JewishDate.NISSAN && getJewishDayOfMonth() == 1) {
-        return Parsha.HACHODESH;
+      if (getJewishMonth() == JewishDate.NISSAN) {
+        if (getJewishDayOfMonth() == 1) {
+          return Parsha.HACHODESH;
+        }
+        if (getJewishDayOfMonth() >= 8 && getJewishDayOfMonth() <= 14) {
+          return Parsha.HAGADOL;
+        }
+      }
+      if (getJewishMonth() == JewishDate.AV) {
+        if (getJewishDayOfMonth() >= 4 && getJewishDayOfMonth() <= 9) {
+          return Parsha.CHAZON;
+        }
+        if (getJewishDayOfMonth() >= 10 && getJewishDayOfMonth() <= 16) {
+          return Parsha.NACHAMU;
+        }
+      }
+      if (getJewishMonth() == JewishDate.TISHREI &&
+          getJewishDayOfMonth() >= 3 &&
+          getJewishDayOfMonth() <= 8) {
+        return Parsha.SHUVA;
+      }
+      if (getParshah() == Parsha.BESHALACH) {
+        return Parsha.SHIRA;
       }
     }
     return Parsha.NONE;
@@ -1488,6 +1519,9 @@ class JewishCalendar extends JewishDate {
         }
         if (day >= 17 && day <= 20 || (day == 16 && inIsrael)) {
           return CHOL_HAMOED_PESACH;
+        }
+        if ((day == 22 && inIsrael) || (day == 23 && !inIsrael)) {
+          return ISRU_CHAG;
         }
         if (isUseModernHolidays() &&
             ((day == 26 && dayOfWeek == JewishDate.thursday) ||
@@ -1540,10 +1574,13 @@ class JewishCalendar extends JewishDate {
         if (day == 6 || (day == 7 && !inIsrael)) {
           return SHAVUOS;
         }
+        if ((day == 7 && inIsrael) || (day == 8 && !inIsrael)) {
+          return ISRU_CHAG;
+        }
         break;
       case JewishDate.TAMMUZ:
         // push off the fast day if it falls on Shabbos
-        if ((day == 17 && dayOfWeek != JewishDate.friday) ||
+        if ((day == 17 && dayOfWeek != JewishDate.saturday) ||
             (day == 18 && dayOfWeek == JewishDate.sunday)) {
           return SEVENTEEN_OF_TAMMUZ;
         }
@@ -1595,6 +1632,9 @@ class JewishCalendar extends JewishDate {
         }
         if (day == 23 && !inIsrael) {
           return SIMCHAS_TORAH;
+        }
+        if ((day == 23 && inIsrael) || (day == 24 && !inIsrael)) {
+          return ISRU_CHAG;
         }
         break;
       case JewishDate.KISLEV: // no yomtov in CHESHVAN
@@ -1677,10 +1717,10 @@ class JewishCalendar extends JewishDate {
   bool isYomTov() {
     int holidayIndex = getYomTovIndex();
     if ((isErevYomTov() &&
-            (holidayIndex != HOSHANA_RABBA &&
-                (holidayIndex == CHOL_HAMOED_PESACH &&
-                    getJewishDayOfMonth() != 20))) ||
-        (isTaanis() && holidayIndex != YOM_KIPPUR)) {
+            !(holidayIndex == HOSHANA_RABBA ||
+                holidayIndex == CHOL_HAMOED_PESACH)) ||
+        (isTaanis() && holidayIndex != YOM_KIPPUR) ||
+        holidayIndex == ISRU_CHAG) {
       return false;
     }
     return getYomTovIndex() != -1;
@@ -1798,7 +1838,7 @@ class JewishCalendar extends JewishDate {
   /// See also [CHOL_HAMOED_SUCCOS].
   bool isCholHamoedSuccos() {
     int holidayIndex = getYomTovIndex();
-    return holidayIndex == CHOL_HAMOED_SUCCOS;
+    return holidayIndex == CHOL_HAMOED_SUCCOS || holidayIndex == HOSHANA_RABBA;
   }
 
   /// Returns true if the current day is erev Yom Tov. The method returns true for Erev - Pesach (first and last days),
@@ -1851,7 +1891,7 @@ class JewishCalendar extends JewishDate {
     // on 14 Nisan unless that is Shabbos where the fast is moved back to Thursday
     return getJewishMonth() == JewishDate.NISSAN &&
         ((day == 14 && dayOfWeek != JewishDate.saturday) ||
-            (day == 12 && dayOfWeek == JewishDate.tuesday));
+            (day == 12 && dayOfWeek == JewishDate.thursday));
   }
 
   /// Returns the day of Chanukah or -1 if it is not Chanukah.
@@ -2210,11 +2250,16 @@ class JewishCalendar extends JewishDate {
         isMashivHaruachEndDate();
   }
 
-  /// Returns true if the current day is _Isru Chag_. The method returns true for the day following _Pesach_
-  /// _Shavuos_ and _Succos_. It utilizes {@see #getInIsrael()} to return the proper date.
-  ///
-  /// Returns true if the current day is _Isru Chag_. The method returns true for the day following _Pesach_
-  /// _Shavuos_ and _Succos_. It utilizes {@see #getInIsrael()} to return the proper date.
+  /// Returns true if the current day is _Purim_, or _Shushan Purim_ when [isMukafChoma] is set.
+  bool isPurim() {
+    int holidayIndex = getYomTovIndex();
+    return isMukafChoma
+        ? holidayIndex == SHUSHAN_PURIM
+        : holidayIndex == PURIM;
+  }
+
+  /// Returns true if the current day is _Isru Chag_. The method returns true for the day following _Pesach_,
+  /// _Shavuos_ and _Succos_. It uses [inIsrael] to return the proper date.
   bool isIsruChag() {
     int holidayIndex = getYomTovIndex();
     return holidayIndex == ISRU_CHAG;
@@ -2253,6 +2298,8 @@ class JewishCalendar extends JewishDate {
     final newJewishCalendar = JewishCalendar.initDate(
         getJewishYear(), getJewishMonth(), getJewishDayOfMonth());
     newJewishCalendar.inIsrael = inIsrael;
+    newJewishCalendar.isMukafChoma = isMukafChoma;
+    newJewishCalendar.setUseModernHolidays(isUseModernHolidays());
     return newJewishCalendar;
   }
 }
