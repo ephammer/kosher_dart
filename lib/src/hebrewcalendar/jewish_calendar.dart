@@ -20,7 +20,6 @@ import 'package:kosher_dart/src/hebrewcalendar/jewish_date.dart';
 import 'package:kosher_dart/src/hebrewcalendar/daf.dart';
 import 'package:kosher_dart/src/hebrewcalendar/yerushalmi_yomi_calculator.dart';
 import 'package:kosher_dart/src/hebrewcalendar/yomi_calculator.dart';
-import 'package:kosher_dart/src/util/geo_location.dart';
 
 /// List of _parshiyos_. [NONE] indicates a week without a _parsha_, while the enum for the _parsha_ of
 /// [VZOS_HABERACHA] exists for consistency, but is not currently used.
@@ -1970,42 +1969,33 @@ class JewishCalendar extends JewishDate {
   /// Returns the molad in Standard Time in Yerushalayim as a Date. The traditional calculation uses local time. This
   /// method subtracts 20.94 minutes (20 minutes and 56.496 seconds) from the local time (Har Habayis with a longitude
   /// of 35.2354° is 5.2354° away from the %15 timezone longitude) to get to standard time. This method
-  /// intentionally uses standard time and not dailight savings time. Java will implicitly format the time to the
-  /// default (or set) Timezone.
+  /// intentionally uses standard time and not dailight savings time. The result is the same instant on every
+  /// machine; it is a `DateTime` in the time zone of the machine, like the other times of this library, and can be
+  /// formatted in any other zone.
   ///
   /// Returns the Date representing the moment of the molad in Yerushalayim standard time (GMT + 2)
   DateTime getMoladAsDateTime() {
     JewishDate molad = getMolad();
-    String locationName = "Jerusalem, Israel";
-
-    double latitude = 31.778; // Har Habayis latitude
-    double longitude = 35.2354; // Har Habayis longitude
-
-    // The raw molad Date (point in time) must be generated using standard time. Using "Asia/Jerusalem" timezone will result in the time
-    // being incorrectly off by an hour in the summer due to DST. Proper adjustment for the actual time in DST will be done by the date
-    // formatter class used to display the Date.
-    String year = DateTime.now().year.toString();
-    String month = DateTime.now().month.toString().padLeft(2, '0');
-    String day = DateTime.now().day.toString().toString().padLeft(2, '0');
-    String hour = DateTime.now().hour.toString().padLeft(2, '0');
-    String minute = DateTime.now().minute.toString().padLeft(2, '0');
-    DateTime dateTime = DateTime.parse("$year-$month-$day $hour:$minute");
-    GeoLocation geo =
-        GeoLocation.setLocation(locationName, latitude, longitude, dateTime);
 
     double moladSeconds = molad.getMoladChalakim() * 10 / 3;
-    double moladMillisecond = (1000 * (moladSeconds - moladSeconds));
-    DateTime cal = DateTime(
+    int seconds = moladSeconds.toInt();
+    int milliseconds = ((moladSeconds - seconds) * 1000).toInt();
+
+    // The molad is calculated in the local mean time of Yerushalayim (Har Habayis, at a longitude of 35.2354). Taking
+    // those clock values as UTC and subtracting the 2:00 of Yerushalayim standard time and then the 20 minutes and
+    // 56.496 seconds that local mean time is ahead of standard time results in the instant of the molad. This does
+    // not depend on the time zone of the machine or on daylight savings time.
+    DateTime moladClock = DateTime.utc(
         molad.getGregorianYear(),
         molad.getGregorianMonth(),
         molad.getGregorianDayOfMonth(),
         molad.getMoladHours(),
         molad.getMoladMinutes(),
-        moladSeconds.toInt(),
-        moladMillisecond.toInt());
-    // subtract local time difference of 20.94 minutes (20 minutes and 56.496 seconds) to get to Standard time
-    cal.add(Duration(milliseconds: -1 * geo.getLocalMeanTimeOffset().toInt()));
-    return cal;
+        seconds,
+        milliseconds);
+    DateTime instant = moladClock.subtract(const Duration(
+        hours: 2, minutes: 20, seconds: 56, milliseconds: 496));
+    return DateTime.fromMillisecondsSinceEpoch(instant.millisecondsSinceEpoch);
   }
 
   /// Returns the earliest time of _Kiddush Levana_ calculated as 3 days after the molad. This method returns the time
