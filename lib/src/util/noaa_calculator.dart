@@ -301,7 +301,7 @@ class NOAACalculator extends AstronomicalCalculator {
     double sdRad = radians(solarDec);
     double x = (cos(radians(zenith)) / (cos(latRad) * cos(sdRad)) -
         tan(latRad) * tan(sdRad));
-    x = max(min(1, x), -1);
+    // x is outside of -1..1 when the sun never reaches the zenith, and acos returns NaN (no event)
     return acos(x); // in radians
   }
 
@@ -417,6 +417,16 @@ class NOAACalculator extends AstronomicalCalculator {
     double eqTime = _getEquationOfTime(tnoon);
     double solarDec = _getSunDeclination(tnoon);
     double hourAngle = _getSunHourAngleAtSunrise(latitude, solarDec, zenith);
+    if (hourAngle.isNaN) {
+      // The sun never reaches this zenith using the declination at noon, but the declination changes during the day
+      // and the sun may just reach it around the solar midnight before sunrise. Try again with the declination and
+      // equation of time of that midnight before reporting that there is no event.
+      double tmidnight = _getJulianCenturiesFromJulianDay(
+          julianDay + (noonmin - 720) / 1440.0);
+      eqTime = _getEquationOfTime(tmidnight);
+      solarDec = _getSunDeclination(tmidnight);
+      hourAngle = _getSunHourAngleAtSunrise(latitude, solarDec, zenith);
+    }
 
     double delta = longitude - degrees(hourAngle);
     double timeDiff = 4 * delta; // in minutes of time
@@ -488,6 +498,14 @@ class NOAACalculator extends AstronomicalCalculator {
     double eqTime = _getEquationOfTime(tnoon);
     double solarDec = _getSunDeclination(tnoon);
     double hourAngle = _getSunHourAngleAtSunset(latitude, solarDec, zenith);
+    if (hourAngle.isNaN) {
+      // See _getSunriseUTC: try again with the declination at the solar midnight after sunset.
+      double tmidnight = _getJulianCenturiesFromJulianDay(
+          julianDay + (noonmin + 720) / 1440.0);
+      eqTime = _getEquationOfTime(tmidnight);
+      solarDec = _getSunDeclination(tmidnight);
+      hourAngle = _getSunHourAngleAtSunset(latitude, solarDec, zenith);
+    }
 
     double delta = longitude - degrees(hourAngle);
     double timeDiff = 4 * delta;
